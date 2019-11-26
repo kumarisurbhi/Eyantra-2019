@@ -12,10 +12,9 @@ pkg load control
 ##*  Version: 1.0.0  
 ##*  Date: November 3, 2019
 ##*
-##*  Team ID :
-##*  Team Leader Name:
-##*  Team Member Name
-##*
+##*  Team ID : eYRC#804
+##*  Team Leader Name: Surbhi Kumari
+##*  Team Member Name: Simrat Singh Chitkara, Shreya Rastogi, Rajat Gurnani
 ##*  
 ##*  Author: e-Yantra Project, Department of Computer Science
 ##*  and Engineering, Indian Institute of Technology Bombay.
@@ -26,7 +25,7 @@ pkg load control
 ##*        http://creativecommons.org/licenses/by-nc-sa/4.0/legalcode 
 ##*     
 ##*
-##*  This software is made available on an “AS IS WHERE IS BASIS”. 
+##*  This software is made available on an ï¿½AS IS WHERE IS BASISï¿½. 
 ##*  Licensee/end user indemnifies and will keep e-Yantra indemnified from
 ##*  any and all claim(s) that emanate from the use of the Software or 
 ##*  breach of the terms of this agreement.
@@ -112,11 +111,12 @@ endfunction
 ##          govern this system.
 function dy = complex_pulley_dynamics(y, m1, m2, m3, g, rA, rB, u)
   
-  
-  dy(1,1) = ;
-  dy(2,1) = ;
-  dy(3,1) = ;
-  dy(4,1) = ;
+  a = m1*m2 + m1*m3 + 4*m2*m3;
+  b = m3-m2;
+  dy(1,1) = y(2);
+  dy(2,1) = (u(1)*(m3 + m2))/(rA*a) - (u(2)*b)/(rB*a) + g*(m1*(m2+m3)-(4*m2*m3))/(a);
+  dy(3,1) = y(4);
+  dy(4,1) = (u(2)/(rB))*((m1+m2+m3)/(a))- (u(1)*(b))/(rA*a) - (2*g*m1*b)/(a);
 endfunction
 
 ## Function : sim_complex_pulley()
@@ -137,9 +137,9 @@ endfunction
 ##          This integrates the system of differential equation from t0 = 0 to 
 ##          tf = 10 with initial condition y0
 function [t,y] = sim_complex_pulley(m1, m2, m3, g, rA, rB, y0)
-  tspan = 0:0.1:10;                  ## Initialise time step           
+  tspan = 0:0.1:10;                       ## Initialise time step           
   u = [0; 0];                             ## No Input
-  [t,y] = ; 
+  [t,y] = ode45(@(t,y)complex_pulley_dynamics(y, m1, m2, m3, g, rA, rB, u),tspan,y0); 
   endfunction
 
 ## Function : complex_pulley_AB_matrix()
@@ -156,8 +156,10 @@ function [t,y] = sim_complex_pulley(m1, m2, m3, g, rA, rB, y0)
 ##          
 ## Purpose: Declare the A and B matrices in this function.
 function [A,B] = complex_pulley_AB_matrix(m1, m2, m3, g, rA, rB)
-  A = ;
-  B = ;
+  a = m1*m2 + m1*m3 + 4*m2*m3;
+  b = m3-m2;
+  A = [0 1 0 0; 0 0 0 0;0 0 0 1;0 0 0 0];
+  B = [0 0; (m3 + m2)/(rA*a)  (-b)/(rB*a) ; 0 0 ; (-b)/(rA*a) (m1+m2+m3)/(rB*a)];
 endfunction
 
 ## Function : pole_place_complex_pulley()
@@ -180,9 +182,12 @@ endfunction
 ##          tf = 10 with initial condition y0 and input u = -Kx where K is
 ##          calculated using Pole Placement Technique.
 function [t,y] = pole_place_complex_pulley(m1, m2, m3, g, rA, rB, y_setpoint, y0)
-  
-  tspan = 0:0.1:10;                  ## Initialise time step 
-  [t,y] = ;
+ 
+  [A,B] = complex_pulley_AB_matrix(m1, m2, m3, g, rA, rB);        ## Initialize A and B matrix
+  eigs = [-5,-3,-6,-6];                                           ## Initialise desired eigenvalues
+  K = place(A,B,eigs);                                            ## Calculate K matrix for desired eigenvalues
+  tspan = 0:0.1:10;                                               ## Initialise time step 
+  [t,y] = ode45(@(t,y)complex_pulley_dynamics(y, m1, m2, m3, g, rA, rB, -K*(y-y_setpoint)),tspan,y0); 
 endfunction
 
 ## Function : lqr_complex_pulley()
@@ -205,12 +210,15 @@ endfunction
 ##          tf = 10 with initial condition y0 and input u = -Kx where K is
 ##          calculated using LQR Controller.
 function [t,y] = lqr_complex_pulley(m1, m2, m3, g, rA, rB, y_setpoint, y0)
-    
+  [A,B] = complex_pulley_AB_matrix(m1, m2, m3, g, rA, rB);
+  Q = 500*[200 0 0 0;0 0.1 0 0;0 0 200 0;0 0 0 0.5];                   ## Initialise Q matrix
+  R = 0.01*eye(2);                        ## Initialise R 
+  K = lqr(A,B,Q,R); 
   tspan = 0:0.1:10;                  ## Initialise time step 
-  [t,y] = ;
+  [t,y] = ode45(@(t,y)complex_pulley_dynamics(y, m1, m2, m3, g, rA, rB, -K*(y-y_setpoint)),tspan,y0); 
 endfunction
 
-## Function : complex_pulley_main()
+## Function : complex_pulley_main()   
 ## ----------------------------------------------------
 ## Purpose: Used for testing out the various controllers by calling their 
 ##          respective functions and observing the behavior of the system. Constant
@@ -220,14 +228,14 @@ function complex_pulley_main()
   m2 = 11.95;
   m3 = 12;
   g = 9.8;
-  rA = 0.2;
+  rA = 0.2; 
   rB = 0.2;
   y_setpoint = [0.6 ; 0; 0.8; 0];
   y0 = [0.4 ; 0; 0.5; 0];
   
-  [t,y] = sim_complex_pulley(m1, m2, m3, g, rA, rB, y0)
-##  [t,y] = pole_place_complex_pulley(m1, m2, m3, g, rA, rB, y_setpoint, y0)
-##  [t,y] = lqr_complex_pulley(m1, m2, m3, g, rA, rB, y_setpoint, y0);
+ [t,y] = sim_complex_pulley(m1, m2, m3, g, rA, rB, y0);
+ ##[t,y] = pole_place_complex_pulley(m1, m2, m3, g, rA, rB, y_setpoint, y0);  #0.59972  -0.00000   0.799864  -0.00000
+ ##[t,y] = lqr_complex_pulley(m1, m2, m3, g, rA, rB, y_setpoint, y0);       # 0.59997   0.00000   0.79997  -0.00000
   
   for k = 1:length(t)
     draw_complex_pulley(y(k, :));

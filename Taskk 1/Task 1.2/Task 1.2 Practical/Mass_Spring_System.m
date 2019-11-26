@@ -12,9 +12,9 @@ pkg load control
 ##*  Version: 1.0.0  
 ##*  Date: November 3, 2019
 ##*
-##*  Team ID :
-##*  Team Leader Name:
-##*  Team Member Name
+##*  Team ID : eYRC#804
+##*  Team Leader Name: Surbhi Kumari
+##*  Team Member Name: Simrat Singh Chitkara, Shreya Rastogi, Rajat Gurnani 
 ##*
 ##*  
 ##*  Author: e-Yantra Project, Department of Computer Science
@@ -26,7 +26,7 @@ pkg load control
 ##*        http://creativecommons.org/licenses/by-nc-sa/4.0/legalcode 
 ##*     
 ##*
-##*  This software is made available on an “AS IS WHERE IS BASIS”. 
+##*  This software is made available on an ï¿½AS IS WHERE IS BASISï¿½. 
 ##*  Licensee/end user indemnifies and will keep e-Yantra indemnified from
 ##*  any and all claim(s) that emanate from the use of the Software or 
 ##*  breach of the terms of this agreement.
@@ -79,7 +79,7 @@ endfunction
 function dy = mass_spring_dynamics(y, m, k, u)
   
   dy(1,1) = y(2);
-  dy(2,1) = ;
+  dy(2,1) = (-1*k/m)*y(1) + (u/m);
 endfunction
 
 ## Function : sim_mass_spring()
@@ -98,7 +98,7 @@ endfunction
 function [t,y] = sim_mass_spring(m, k, y0)
   tspan = 0:0.1:10;                ## Initialize time step
   u = 0;                           ## No input
-  [t,y] = ;
+  [t,y] = ode45(@(t,y)mass_spring_dynamics(y, m, k, u),tspan,y0);
 endfunction
 
 ## Function : mass_spring_AB_matrix()
@@ -110,9 +110,9 @@ endfunction
 ##          B - B matrix of system
 ##          
 ## Purpose: Declare the A and B matrices in this function.
-function [A,B] = mass_spring_AB_matrix(m, k)
-  A = ;
-  B = ;
+function [A,B] = mass_spring_AB_matrix(m = 0.2, k = 0.8) # why does it not working in lqr sad voices
+  A = [0 1; (-1*k)/m 0];
+  B = [0;1/m];
 endfunction
 
 ## Function : pole_place_mass_spring()
@@ -131,12 +131,12 @@ endfunction
 ##          tf = 10 with initial condition y0 and input u = -Kx where K is
 ##          calculated using Pole Placement Technique.
 function [t,y] = pole_place_mass_spring(m, k, y_setpoint, y0)
-  [A,B] = ;  ## Initialize A and B matrix 
-  eigs = ;                    ## Initialise desired eigenvalues
-  K = ;                ## Calculate K matrix for desired eigenvalues
+  [A,B] = mass_spring_AB_matrix(m, k);  ## Initialize A and B matrix 
+  eigs = [-20,-20];                    ## Initialise desired eigenvalues
+  K = place(A,B,eigs);                ## Calculate K matrix for desired eigenvalues
   
   tspan = 0:0.1:10;                   ## Initialise time step 
-  [t,y] = ;
+  [t,y] = ode45(@(t,y)mass_spring_dynamics(y, m, k, -K*(y-y_setpoint)),tspan,y0)
 endfunction
 
 ## Function : lqr_mass_spring()
@@ -155,14 +155,14 @@ endfunction
 ##          tf = 10 with initial condition y0 and input u = -Kx where K is
 ##          calculated using LQR
 function [t,y] = lqr_mass_spring(m, k, y_setpoint, y0)
-  [A,B] = ;  ## Initialize A and B matrix 
-  Q = ;                  ## Initialise desired eigenvalues
-  R = ;               ## Calculate K matrix for desired eigenvalues
+  [A,B] = mass_spring_AB_matrix;  ## Initialize A and B matrix 
+  Q = [4500 0 ; 0 1];                  ## Initialise desired eigenvalues
+  R = 0.005;               ## Calculate K matrix for desired eigenvalues
   
-  K = ;
+  K = lqr(A,B,Q,R);
   
   tspan = 0:0.1:10;                   ## Initialise time step 
-  [t,y] = ;
+  [t,y] = ode45(@(t,y)mass_spring_dynamics(y, m, k, -K*(y-y_setpoint)),tspan,y0);
 endfunction
 
 ## Function : mass_spring_main()
@@ -174,11 +174,11 @@ function mass_spring_main()
   m = 0.2;
   k = 0.8;
   y0 = [-0.3; 0];
-  y_setpoint = [0.7; 0];
+  y_setpoint = [0.8; 0];
   
   [t,y] = sim_mass_spring(m,k, y0);      ## Test mass spring system with no input
-##  [t,y] = pole_place_mass_spring(m, k, y_setpoint, y0); ## Test system with Pole Placement controller
-##   [t,y] = lqr_mass_spring(m, k, y_setpoint, y0);  ## Test system with LQR controller
+  ##[t,y] = pole_place_mass_spring(m, k, y_setpoint, y0); ## Test system with Pole Placement controller #0.69300
+  ##[t,y] = lqr_mass_spring(m, k, y_setpoint, y0);  ## Test system with LQR controller  #  0.69941  -0.00000
   for k = 1:length(t)
     draw_mass_spring(y(k, :));  
   endfor

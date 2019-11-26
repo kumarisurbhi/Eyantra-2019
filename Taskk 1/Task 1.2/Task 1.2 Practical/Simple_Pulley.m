@@ -12,9 +12,9 @@ pkg load control
 ##*  Version: 1.0.0  
 ##*  Date: November 3, 2019
 ##*
-##*  Team ID :
-##*  Team Leader Name:
-##*  Team Member Name
+##*  Team ID : eYRC#804
+##*  Team Leader Name: Surbhi Kumari
+##*  Team Member Name: Simrat Singh Chitkara, Shreya Rastogi, Rajat Gurnani
 ##*    
 ##*  Author: e-Yantra Project, Department of Computer Science
 ##*  and Engineering, Indian Institute of Technology Bombay.
@@ -25,7 +25,7 @@ pkg load control
 ##*        http://creativecommons.org/licenses/by-nc-sa/4.0/legalcode 
 ##*     
 ##*
-##*  This software is made available on an “AS IS WHERE IS BASIS”. 
+##*  This software is made available on an ï¿½AS IS WHERE IS BASISï¿½. 
 ##*  Licensee/end user indemnifies and will keep e-Yantra indemnified from
 ##*  any and all claim(s) that emanate from the use of the Software or 
 ##*  breach of the terms of this agreement.
@@ -46,9 +46,9 @@ pkg load control
 ##          a 2D plot.
 function draw_pulley(y)
   
-  pd = 0.4;                   ## Pulley Diameter
+  pd = 0.4;                  ## Pulley Diameter
   p_y = 0.5;                 ## Pulley position wrt y
-  L = 1;                      ## Length of string
+  L = 1;                     ## Length of string
   ml = 0.2;                  ## Mass Length
   mb = 0.1;                  ## Mass Breadth
   x1 = y(1);
@@ -86,8 +86,8 @@ endfunction
 ##          govern this system.
 function dy = pulley_dynamics(y, m1, m2, g, r, u)
   
-  dy(1,1) = ;
-  dy(2,1) = ;  
+  dy(1,1) = y(2);
+  dy(2,1) = (1*u/r + ((m1-m2)*g))/(m1+m2);  
 endfunction
 
 ## Function : sim_pulley()
@@ -107,7 +107,7 @@ endfunction
 function [t,y] = sim_pulley(m1, m2, g, r, y0)
   tspan = 0:0.1:10;                  ## Initialise time step           
   u = 0;                             ## No Input
-  [t,y] = ;  
+  [t,y] = ode45(@(t,y)pulley_dynamics(y, m1, m2, g, r, u),tspan,y0);  
 endfunction
 
 ## Function : pulley_AB_matrix()
@@ -122,8 +122,8 @@ endfunction
 ##          
 ## Purpose: Declare the A and B matrices in this function.
 function [A,B] = pulley_AB_matrix(m1, m2, g, r)
-  A = ;
-  B = ;
+  A = [0 1; 0 0];
+  B = [0;1/(r*(m1+m2))];
 endfunction
 
 ## Function : pole_place_pulley()
@@ -145,8 +145,12 @@ endfunction
 ##          calculated using Pole Placement Technique.
 function [t,y] = pole_place_pulley(m1, m2, g, r, y_setpoint, y0)
   
-  tspan = 0:0.1:10;                  ## Initialise time step 
-  [t,y] = ;  
+  [A,B] = pulley_AB_matrix(m1, m2, g, r);     ## Initialize A and B matrix
+  eigs = [-5,-10];                         ##36  ## Initialise desired eigenvalues
+  K = place(A,B,eigs);                        ## Calculate K matrix for desired eigenvalues
+  
+  tspan = 0:0.1:10;                           ## Initialise time step 
+  [t,y] = ode45(@(t,y)pulley_dynamics(y, m1, m2, g, r,-K*(y-y_setpoint)),tspan,y0); 
 endfunction
 
 ## Function : lqr_pulley()
@@ -167,9 +171,13 @@ endfunction
 ##          tf = 10 with initial condition y0 and input u = -Kx where K is
 ##          calculated using LQR
 function [t,y] = lqr_pulley(m1, m2, g, r, y_setpoint, y0)
-    
-  tspan = 0:0.1:10;                  ## Initialise time step 
-  [t,y] = ;  
+  [A,B] = pulley_AB_matrix(m1, m2, g, r);               ## Initialize A and B matrix
+  Q = 1000*[2 0;0 1];                   ## Initialise Q matrix
+  R = 2;                                ## Initialise R 
+  
+  K = lqr(A,B,Q,R);                     ## Calculate K matrix from A,B,Q,R matrices  
+  tspan = 0:0.1:10;                     ## Initialise time step 
+  [t,y] = ode45(@(t,y)pulley_dynamics(y, m1, m2, g, r,-K*(y-y_setpoint)),tspan,y0) 
 endfunction
 
 ## Function : simple_pulley_main()
@@ -180,14 +188,14 @@ endfunction
 function simple_pulley_main()
   m1 = 7.5;
   m2 = 7.51;
-  g = 9.8;
-  r = 0.2;
-  y0 = [0.5 ; 0];                   ## Initial condtion
+  g  = 9.8;
+  r  = 0.2;
+  y0 = [0.5 ; 0];                      ## Initial condtion
   y_setpoint = [0.75; 0];              ## Set Point
   
-  [t,y] = sim_pulley(m1, m2, g, r, y0);
-##  [t,y] = pole_place_pulley(m1, m2, g, r, y_setpoint, y0)
-##  [t,y] = lqr_pulley(m1, m2, g, r, y_setpoint, y0)
+  [t,y] = sim_pulley(m1, m2, g, r, y0); 
+ #[t,y] = pole_place_pulley(m1, m2, g, r, y_setpoint, y0);        #done to 0.74987 ,0
+ #[t,y] = lqr_pulley(m1, m2, g, r, y_setpoint, y0);              #done to 0.74938 ,0
   
   for k = 1:length(t)
     draw_pulley(y(k, :));  
